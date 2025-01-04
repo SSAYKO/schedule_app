@@ -30,7 +30,7 @@ class MainWindow(QMainWindow):
         main_layout.setSpacing(20)
 
         layout1 = QHBoxLayout()
-        self.add_label(main_layout, "Lista de materias", 14)
+        self.add_label(main_layout, "\nLista de materias", 14)
         self.add_label(layout1, "Nombre de la Materia:")
         self.name_input = self.add_line_edit(layout1, "ej. Calculo Diferencial")
 
@@ -183,9 +183,10 @@ class MainWindow(QMainWindow):
             schedule2_hour2_time = convert_to_24_hour(schedule2_hour2_date)
 
 
-            if schedule1_date == schedule2_date:
-                self.show_message("Error", "Los días de los horarios no pueden ser iguales.", QMessageBox.Icon.Warning)
-                return
+            if schedule2_hour2_time == schedule1_hour2_time or schedule2_hour1_time == schedule1_hour1_time:
+                
+                 self.show_message("Error", "Verifica si cambiaste correctamente las horas.", QMessageBox.Icon.Warning)
+                 return
 
             if datetime.combine(datetime.today(), schedule1_hour2_time) - datetime.combine(datetime.today(), schedule1_hour1_time) < timedelta(hours=1):
                 self.show_message("Error", "La diferencia entre las horas del primer horario debe ser al menos de 1 hora.", QMessageBox.Icon.Warning)
