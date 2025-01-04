@@ -7,7 +7,7 @@ Schedule App is an algorithm designed to efficiently organize academic subjects 
 - 📄 **PDF Integration:** Automatically extract subject and schedule data from university-provided PDFs.
 - 🖊️ **Manual Input:** Manually input subjects and their details.
 - ⚙️ **Priority Organization:** Sorts subjects by relevance and priority.
-- 📊 **Schedule Variations:** Generates up to 3 optimized schedule variations.
+- 📊 **Schedule Variations:** Generates up to 5 optimized schedule variations.
 - 📑 **Export Options:** Export schedules in PDF or CSV formats.
 
 ## 📥 Inputs
