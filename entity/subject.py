@@ -7,3 +7,4 @@ class Subject:
         self.priority = priority
         self.credits = credits
         self.groups = groups
+        self.group = None
