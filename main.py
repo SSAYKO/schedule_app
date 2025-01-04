@@ -36,7 +36,7 @@ class MainWindow(QMainWindow):
 
         # Layout for subject name input
         layout1 = QHBoxLayout()
-        self.add_label(main_layout, "Lista de materias", 14)
+        self.add_label(main_layout, "\nLista de materias", 14)
         self.add_label(layout1, "Nombre de la Materia:")
         self.name_input = self.add_line_edit(layout1, "ej. Calculo Diferencial")
 
