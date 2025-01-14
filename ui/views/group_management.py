@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QListWidget, QLabel, QPushButton, QSpinBox, QComboBox, QMessageBox
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QListWidget, QLabel, QPushButton, QComboBox, QMessageBox
 from PyQt6.QtGui import QFont
 from ui.controllers.group_controller import GroupController
 
@@ -50,13 +50,30 @@ class GroupManagement(QWidget):
             self.show_message("Límite alcanzado", f"Solo puedes agregar hasta {self.MAX_SCHEDULES} horarios.")
             return
 
+        # Bloquear horarios anteriores
+        for day_input, hour_start_input, hour_end_input in self.schedule_inputs:
+            day_input.setEnabled(False)
+            hour_start_input.setEnabled(False)
+            hour_end_input.setEnabled(False)
+
+        # Calcular la hora mínima para el nuevo horario
+        min_start_time = 360  # 6:00 AM en minutos desde medianoche
+        if self.schedule_inputs:
+            last_day = self.schedule_inputs[-1][0].currentText()
+            last_end_time = self.schedule_inputs[-1][2].currentData()
+            min_start_time = last_end_time if last_day == "Lunes" else 360
+
         layout_schedule = QHBoxLayout()
         self.layout_inputs.addLayout(layout_schedule)
 
         # Crear y agregar widgets
         day_input = self.add_combo_box(layout_schedule, ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"])
-        hour_start_input = self.add_spin_box(layout_schedule, 600, 2100)
-        hour_end_input = self.add_spin_box(layout_schedule, 600, 2100)
+        hour_start_input = self.add_time_combo_box(layout_schedule, min_start_time, 1260)  # Hasta las 9:00 PM
+        hour_end_input = self.add_time_combo_box(layout_schedule, min_start_time + 60, min(min_start_time + 180, 1320))  # Hasta las 10:00 PM
+
+        # Actualizar el rango del horario final al cambiar el inicio
+        hour_start_input.currentIndexChanged.connect(lambda: self.update_hour_end_limits(hour_start_input, hour_end_input))
+        day_input.currentIndexChanged.connect(lambda: self.update_day_limits(day_input, hour_start_input, hour_end_input))
 
         # Almacenar el conjunto de inputs
         self.schedule_inputs.append((day_input, hour_start_input, hour_end_input))
@@ -64,6 +81,32 @@ class GroupManagement(QWidget):
         # Oculta el botón si ya alcanzó el límite
         if len(self.schedule_inputs) >= self.MAX_SCHEDULES:
             self.add_schedule_button.setEnabled(False)
+
+    def update_hour_end_limits(self, hour_start_input, hour_end_input):
+        """Actualiza los límites del horario final en función del horario inicial."""
+        start_time = hour_start_input.currentData()
+        hour_end_input.clear()
+        for time in range(start_time + 60, min(start_time + 180, 1320) + 1, 30):
+            hour_end_input.addItem(self.minutes_to_ampm(time), time)
+
+    def update_day_limits(self, day_input, hour_start_input, hour_end_input):
+        """Actualiza los límites para los horarios según el día seleccionado."""
+        selected_day = day_input.currentText()
+        min_start_time = 360  # Por defecto 6:00 AM
+
+        # Si el día es el mismo que el último, ajustar según el último horario
+        if self.schedule_inputs:
+            last_day = self.schedule_inputs[-1][0].currentText()
+            last_end_time = self.schedule_inputs[-1][2].currentData()
+            if selected_day == last_day:
+                min_start_time = last_end_time
+
+        hour_start_input.clear()
+        for time in range(min_start_time, 1260 + 1, 30):
+            hour_start_input.addItem(self.minutes_to_ampm(time), time)
+
+        # Actualizar el rango del horario final
+        self.update_hour_end_limits(hour_start_input, hour_end_input)
 
     def reset_schedule_inputs(self):
         """Reinicia los inputs de horarios a su estado por defecto."""
@@ -87,8 +130,8 @@ class GroupManagement(QWidget):
         for day_input, hour_start_input, hour_end_input in self.schedule_inputs:
             schedules.append({
                 'day': day_input.currentText(),
-                'start': hour_start_input.value(),
-                'end': hour_end_input.value(),
+                'start': hour_start_input.currentData(),
+                'end': hour_end_input.currentData(),
             })
 
         group_id = len(self.selected_subject.groups) + 1
@@ -111,7 +154,8 @@ class GroupManagement(QWidget):
         groups = self.group_controller.get_groups(self.selected_subject)
         for group in groups:
             schedule_texts = [
-                f"{schedule['day']} {schedule['start']}-{schedule['end']}" for schedule in group.schedules
+                f"{schedule['day']} {self.minutes_to_ampm(schedule['start'])}-{self.minutes_to_ampm(schedule['end'])}"
+                for schedule in group.schedules
             ]
             self.group_list.addItem(f"Grupo {group.id}: {', '.join(schedule_texts)}")
 
@@ -127,13 +171,13 @@ class GroupManagement(QWidget):
         layout.addWidget(combo_box)
         return combo_box
 
-    def add_spin_box(self, layout, minimum, maximum):
-        """Crea y agrega un spin box."""
-        spin_box = QSpinBox()
-        spin_box.setMinimum(minimum)
-        spin_box.setMaximum(maximum)
-        layout.addWidget(spin_box)
-        return spin_box
+    def add_time_combo_box(self, layout, minimum, maximum):
+        """Crea y agrega un combo box para horarios en formato AM/PM."""
+        combo_box = QComboBox()
+        for time in range(minimum, maximum + 1, 30):
+            combo_box.addItem(self.minutes_to_ampm(time), time)
+        layout.addWidget(combo_box)
+        return combo_box
 
     def add_button(self, text, callback):
         """Crea y agrega un botón."""
@@ -144,6 +188,16 @@ class GroupManagement(QWidget):
     def show_message(self, title, text):
         """Muestra un mensaje al usuario."""
         QMessageBox(QMessageBox.Icon.Information, title, text).exec()
+
+    def minutes_to_ampm(self, minutes):
+        """Convierte minutos desde medianoche a formato AM/PM."""
+        hours = minutes // 60
+        mins = minutes % 60
+        period = "AM" if hours < 12 else "PM"
+        hours = hours % 12
+        hours = 12 if hours == 0 else hours  # Manejar 12 AM/PM
+        return f"{hours}:{mins:02d} {period}"
+
 
     def update_content(self, selected_subject):
         """Actualiza el formulario con los datos de la nueva materia seleccionada."""
